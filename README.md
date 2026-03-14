@@ -1,1 +1,0 @@
-# neoversity-devops-course
