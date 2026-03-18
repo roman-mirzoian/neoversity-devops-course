@@ -9,7 +9,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = "us-west-2"
   # profile = "default"                  # optional, if you use named profile
   # shared_credentials_file = "~/.aws/credentials"  # optional
 }
@@ -29,5 +29,13 @@ module "vpc" {
   private_subnets     = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]         # Приватні підмережі
   availability_zones  = ["us-west-2a", "us-west-2b", "us-west-2c"]            # Зони доступності
   vpc_name            = "vpc"              # Ім'я VPC
+}
+
+# Підключаємо модуль для ECR
+module "ecr" {
+  source            = "./modules/ecr"
+  repository_name   = "lesson-5-app"
+  image_tag_mutability = "MUTABLE"
+  scan_on_push      = true
 }
 
