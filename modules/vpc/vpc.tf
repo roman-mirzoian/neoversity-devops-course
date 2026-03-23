@@ -1,4 +1,16 @@
 # Створюємо основну VPC
+locals {
+  k8s_cluster_tag = var.cluster_name != "" ? {
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+  } : {}
+  public_k8s_tags = var.cluster_name != "" ? {
+    "kubernetes.io/role/elb" = "1"
+  } : {}
+  private_k8s_tags = var.cluster_name != "" ? {
+    "kubernetes.io/role/internal-elb" = "1"
+  } : {}
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr_block   # CIDR блок для нашої VPC (наприклад, 10.0.0.0/16)
   enable_dns_support   = true                 # Вмикає підтримку DNS у VPC
@@ -17,11 +29,15 @@ resource "aws_subnet" "public" {
   availability_zone       = var.availability_zones[count.index] # Визначаємо зони доступності для кожної підмережі
   map_public_ip_on_launch = true                         # Автоматично надає публічні IP-адреси інстансам у підмережі
 
-  tags = {
-    Name = "${var.vpc_name}-public-subnet-${count.index + 1}"  # Тег з нумерацією підмережі
-    # count.index — це індекс циклу "count", який починається з 0.
-    # ${count.index + 1} додає +1 до індексу, щоб отримати людське позначення (1, 2, 3 замість 0, 1, 2).
-  }
+  tags = merge(
+    {
+      Name = "${var.vpc_name}-public-subnet-${count.index + 1}"  # Тег з нумерацією підмережі
+      # count.index — це індекс циклу "count", який починається з 0.
+      # ${count.index + 1} додає +1 до індексу, щоб отримати людське позначення (1, 2, 3 замість 0, 1, 2).
+    },
+    local.k8s_cluster_tag,
+    local.public_k8s_tags
+  )
 }
 
 # Створюємо приватні підмережі
@@ -31,10 +47,14 @@ resource "aws_subnet" "private" {
   cidr_block        = var.private_subnets[count.index] # CIDR-блок для конкретної підмережі зі списку private_subnets
   availability_zone = var.availability_zones[count.index] # Визначаємо зони доступності для підмереж
 
-  tags = {
-    Name = "${var.vpc_name}-private-subnet-${count.index + 1}"  # Тег для підмережі з нумерацією
-    # ${count.index + 1} використовується, щоб нумерація підмереж починалася з 1.
-  }
+  tags = merge(
+    {
+      Name = "${var.vpc_name}-private-subnet-${count.index + 1}"  # Тег для підмережі з нумерацією
+      # ${count.index + 1} використовується, щоб нумерація підмереж починалася з 1.
+    },
+    local.k8s_cluster_tag,
+    local.private_k8s_tags
+  )
 }
 
 # Створюємо Internet Gateway для публічних підмереж
@@ -64,4 +84,3 @@ resource "aws_nat_gateway" "nat" {
     Name = "${var.vpc_name}-nat-gw"
   }
 }
-

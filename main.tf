@@ -9,9 +9,14 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-2"
+  region = local.region
   # profile = "default"                  # optional, if you use named profile
   # shared_credentials_file = "~/.aws/credentials"  # optional
+}
+
+locals {
+  cluster_name = "lesson-7-eks"
+  region       = "us-west-2"
 }
 
 # Підключаємо модуль для S3 та DynamoDB
@@ -29,6 +34,7 @@ module "vpc" {
   private_subnets     = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]         # Приватні підмережі
   availability_zones  = ["us-west-2a", "us-west-2b", "us-west-2c"]            # Зони доступності
   vpc_name            = "vpc"              # Ім'я VPC
+  cluster_name        = local.cluster_name
 }
 
 # Підключаємо модуль для ECR
@@ -39,3 +45,18 @@ module "ecr" {
   scan_on_push      = true
 }
 
+# Підключаємо модуль для EKS
+module "eks" {
+  source                = "./modules/eks"
+  cluster_name          = local.cluster_name
+  cluster_version       = "1.29"
+  region                = local.region
+  subnet_ids            = module.vpc.private_subnets
+  node_subnet_ids       = module.vpc.private_subnets
+  node_desired_size     = 2
+  node_min_size         = 2
+  node_max_size         = 6
+  node_instance_types   = ["t3.medium"]
+  node_capacity_type    = "ON_DEMAND"
+  node_disk_size        = 20
+}
