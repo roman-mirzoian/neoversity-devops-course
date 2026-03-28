@@ -17,3 +17,13 @@ output "kubeconfig_command" {
   description = "Команда для налаштування kubectl"
   value       = "aws eks update-kubeconfig --name ${aws_eks_cluster.this.name} --region ${var.region}"
 }
+
+output "cluster_oidc_issuer_url" {
+  description = "OIDC issuer URL кластера (для IRSA)"
+  value       = aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
+output "oidc_provider_arn" {
+  description = "ARN OIDC провайдера IAM"
+  value       = aws_iam_openid_connect_provider.eks.arn
+}

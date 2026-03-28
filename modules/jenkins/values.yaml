@@ -1,0 +1,95 @@
+controller:
+  serviceType: LoadBalancer
+  servicePort: 8080
+
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      jenkins-casc: |
+        jenkins:
+          systemMessage: "Jenkins configured by Terraform + JCasC | CI/CD: Kaniko → ECR → Argo CD"
+          numExecutors: 0
+        unclassified:
+          location:
+            url: "http://jenkins.jenkins.svc.cluster.local:8080/"
+
+  installPlugins:
+    - kubernetes:4205.v430230a_81d9c
+    - workflow-aggregator:596.v8c21c963d92d
+    - git:5.2.1
+    - configuration-as-code:1775.v810dc950b_514
+    - pipeline-stage-view:2.34
+    - blueocean:1.27.9
+    - aws-credentials:231.v08a_59e0f7728
+    - generic-webhook-trigger:1.88
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+
+agent:
+  enabled: true
+  namespace: jenkins
+
+  podTemplates:
+    kaniko: |
+      - name: kaniko
+        label: kaniko
+        serviceAccount: jenkins
+        containers:
+          - name: kaniko
+            # debug-tag містить docker-credential-ecr-login, потрібний для ECR auth
+            image: gcr.io/kaniko-project/executor:v1.21.0-debug
+            command: /busybox/cat
+            ttyEnabled: true
+            resourceRequestCpu: "500m"
+            resourceRequestMemory: "1Gi"
+            resourceLimitCpu: "1"
+            resourceLimitMemory: "2Gi"
+            envVars:
+              - envVar:
+                  key: AWS_SDK_LOAD_CONFIG
+                  value: "true"
+          - name: jnlp
+            image: jenkins/inbound-agent:latest
+            resourceRequestCpu: "200m"
+            resourceRequestMemory: "256Mi"
+        volumes:
+          # Монтуємо config.json з credential helper для ECR
+          - secretVolume:
+              mountPath: /kaniko/.docker
+              secretName: ecr-registry-config
+    kubectl-git: |
+      - name: kubectl-git
+        label: kubectl-git
+        serviceAccount: jenkins
+        containers:
+          - name: git
+            image: alpine/git:latest
+            command: /bin/cat
+            ttyEnabled: true
+            resourceRequestCpu: "100m"
+            resourceRequestMemory: "128Mi"
+          - name: kubectl
+            image: bitnami/kubectl:latest
+            command: /bin/cat
+            ttyEnabled: true
+            resourceRequestCpu: "100m"
+            resourceRequestMemory: "128Mi"
+          - name: jnlp
+            image: jenkins/inbound-agent:latest
+            resourceRequestCpu: "200m"
+            resourceRequestMemory: "256Mi"
+
+persistence:
+  enabled: true
+  storageClass: "gp2"
+  size: "20Gi"
+
+serviceAccount:
+  create: true
+  name: jenkins

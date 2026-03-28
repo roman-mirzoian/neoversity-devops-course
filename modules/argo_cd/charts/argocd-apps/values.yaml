@@ -1,0 +1,15 @@
+repoUrl: ""
+
+targetRevision: "main"
+
+djangoApp:
+  name: django-app
+  path: charts/django-app
+  namespace: default
+
+  syncPolicy:
+    automated:
+      prune: true       
+      selfHeal: true    
+    syncOptions:
+      - CreateNamespace=true

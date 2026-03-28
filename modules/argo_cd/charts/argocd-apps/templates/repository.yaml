@@ -1,0 +1,13 @@
+{{- if .Values.repoUrl }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo-{{ .Values.djangoApp.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+stringData:
+  type: git
+  url: {{ .Values.repoUrl }}
+{{- end }}

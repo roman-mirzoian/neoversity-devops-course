@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.djangoApp.name }}
+  namespace: {{ .Release.Namespace }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repoUrl }}
+    targetRevision: {{ .Values.targetRevision }}
+    path: {{ .Values.djangoApp.path }}
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.djangoApp.namespace }}
+  syncPolicy:
+    automated:
+      prune: {{ .Values.djangoApp.syncPolicy.automated.prune }}
+      selfHeal: {{ .Values.djangoApp.syncPolicy.automated.selfHeal }}
+    syncOptions:
+{{ toYaml .Values.djangoApp.syncPolicy.syncOptions | indent 6 }}
