@@ -128,6 +128,43 @@ module "jenkins" {
   depends_on = [module.eks]
 }
 
+# Підключення для RDS
+module "rds" {
+  source = "./modules/rds"
+
+  identifier  = "lesson-7-django-db"
+  use_aurora  = false
+
+  engine         = "postgres"
+  engine_version = "14.10"
+  instance_class = "db.t3.medium"
+
+  vpc_id              = module.vpc.vpc_id
+  subnet_ids          = module.vpc.private_subnets
+  allowed_cidr_blocks = ["10.0.0.0/16"] # VPC CIDR
+
+  database_name   = "djangodb"
+  master_username = "dbadmin"
+  master_password = var.db_password
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = "gp3"
+  multi_az              = false
+
+  storage_encrypted       = true
+  deletion_protection     = false
+  skip_final_snapshot     = true
+  backup_retention_period = 7
+
+  tags = {
+    Project     = "lesson-7"
+    Environment = "dev"
+  }
+
+  depends_on = [module.vpc]
+}
+
 # Підключення для Argo CD
 module "argo_cd" {
   source = "./modules/argo_cd"

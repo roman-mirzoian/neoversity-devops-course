@@ -8,3 +8,9 @@ variable "git_repo_url" {
   description = "URL Git репозиторію (для Jenkinsfile pipeline та Argo CD Application)"
   type        = string
 }
+
+variable "db_password" {
+  description = "Пароль майстер-користувача бази даних (передавати через -var або terraform.tfvars)"
+  type        = string
+  sensitive   = true
+}

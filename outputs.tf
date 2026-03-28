@@ -57,3 +57,18 @@ output "argocd_get_password_command" {
   description = "Команда для отримання початкового пароля Argo CD"
   value       = "kubectl get secret argocd-initial-admin-secret -n ${module.argo_cd.argocd_namespace} -o jsonpath='{.data.password}' | base64 -d"
 }
+
+output "rds_endpoint" {
+  description = "Основний endpoint БД (writer для Aurora, single для RDS)"
+  value       = module.rds.endpoint
+}
+
+output "rds_connection_string" {
+  description = "DATABASE_URL для Django застосунку (пароль прихований)"
+  value       = module.rds.connection_string
+}
+
+output "rds_security_group_id" {
+  description = "ID Security Group для RDS (для правил ingress з EKS нод)"
+  value       = module.rds.security_group_id
+}
