@@ -1,0 +1,163 @@
+grafana:
+  enabled: true
+
+  adminUser: admin
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  persistence:
+    enabled: true
+    storageClassName: "${storage_class}"
+    size: "${grafana_storage_size}"
+    accessModes:
+      - ReadWriteOnce
+
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: UTC
+
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          orgId: 1
+          folder: ""
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+  dashboards:
+    default:
+      kubernetes-cluster:
+        gnetId: 7249
+        revision: 1
+        datasource: Prometheus
+      node-exporter:
+        gnetId: 1860
+        revision: 37
+        datasource: Prometheus
+      django-app:
+        gnetId: 9528
+        revision: 1
+        datasource: Prometheus
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s:%(http_port)s/"
+    auth.anonymous:
+      enabled: false
+    security:
+      allow_embedding: true
+
+prometheus:
+  enabled: true
+
+  prometheusSpec:
+    retention: "${prometheus_retention}"
+    retentionSize: "18GB"
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: "${storage_class}"
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: "${prometheus_storage_size}"
+
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    scrapeInterval: "30s"
+    evaluationInterval: "30s"
+
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "2Gi"
+
+    additionalScrapeConfigs: []
+
+alertmanager:
+  enabled: true
+
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: "${storage_class}"
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: "${alertmanager_storage_size}"
+
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: "null"
+    receivers:
+      - name: "null"
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+kubelet:
+  enabled: true
+  serviceMonitor:
+    https: true
+
+kubeProxy:
+  enabled: false
+
+kubeEtcd:
+  enabled: false 
+
+kubeControllerManager:
+  enabled: false 
+
+kubeScheduler:
+  enabled: false 

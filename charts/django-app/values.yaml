@@ -26,9 +26,32 @@ autoscaling:
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
 
+livenessProbe:
+  httpGet:
+    path: /health/live/
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready/
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+
+monitoring:
+  enabled: true
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics/"
+
 config:
   env:
-    DJANGO_SECRET_KEY: "replace-me"
+    DJANGO_SECRET_KEY: "###"
     DJANGO_DEBUG: "False"
     ALLOWED_HOSTS: "*"
-    DATABASE_URL: "postgres://user:password@db:5432/app"
+    DATABASE_URL: "postgresql://dbadmin:password@###:5432/djangodb"

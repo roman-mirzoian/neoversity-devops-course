@@ -165,6 +165,29 @@ module "rds" {
   depends_on = [module.vpc]
 }
 
+# Підключаємо модуль для моніторингу (Prometheus + Grafana + Alertmanager)
+# Доступ: kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  namespace              = "monitoring"
+  chart_version          = "56.21.4"
+  grafana_admin_password = var.grafana_admin_password
+
+  prometheus_retention      = "15d"
+  prometheus_storage_size   = "20Gi"
+  grafana_storage_size      = "5Gi"
+  alertmanager_storage_size = "2Gi"
+  storage_class             = "gp2"
+
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
+
+  depends_on = [module.eks]
+}
+
 # Підключення для Argo CD
 module "argo_cd" {
   source = "./modules/argo_cd"

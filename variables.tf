@@ -14,3 +14,9 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "grafana_admin_password" {
+  description = "Пароль адміністратора Grafana (передавати через -var або terraform.tfvars)"
+  type        = string
+  sensitive   = true
+}

@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: djangodb
+      POSTGRES_USER: dbadmin
+      POSTGRES_PASSWORD: localdevpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbadmin -d djangodb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: "local-dev-secret-key-not-for-production"
+      DJANGO_DEBUG: "True"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      DATABASE_URL: "postgresql://dbadmin:localdevpassword@db:5432/djangodb"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+volumes:
+  pgdata:
+    driver: local

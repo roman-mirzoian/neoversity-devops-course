@@ -72,3 +72,18 @@ output "rds_security_group_id" {
   description = "ID Security Group для RDS (для правил ingress з EKS нод)"
   value       = module.rds.security_group_id
 }
+
+output "monitoring_namespace" {
+  description = "Namespace моніторингу (Prometheus + Grafana)"
+  value       = module.monitoring.monitoring_namespace
+}
+
+output "grafana_port_forward_command" {
+  description = "Команда для доступу до Grafana UI"
+  value       = module.monitoring.grafana_port_forward_command
+}
+
+output "prometheus_port_forward_command" {
+  description = "Команда для доступу до Prometheus UI"
+  value       = module.monitoring.prometheus_port_forward_command
+}

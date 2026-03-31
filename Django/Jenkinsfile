@@ -1,0 +1,123 @@
+pipeline {
+  agent none
+
+  environment {
+    AWS_REGION    = 'us-west-2'
+    ECR_REPO_NAME = 'lesson-5-app'
+    GIT_BRANCH    = 'main'
+    GIT_CREDS_ID  = '###'
+    IMAGE_TAG     = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
+    DOCKERFILE_PATH = 'Django/Dockerfile'
+    BUILD_CONTEXT   = 'Django'
+    HELM_VALUES     = 'charts/django-app/values.yaml'
+  }
+
+  stages {
+
+    stage('Prepare') {
+      agent {
+        kubernetes {
+          label 'kubectl-git'
+          defaultContainer 'git'
+        }
+      }
+      steps {
+        container('git') {
+          script {
+            env.AWS_ACCOUNT_ID = sh(
+              script: 'aws sts get-caller-identity --query Account --output text',
+              returnStdout: true
+            ).trim()
+            env.ECR_REPO = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.ECR_REPO_NAME}"
+            echo "ECR: ${env.ECR_REPO}"
+            echo "Тег: ${env.IMAGE_TAG}"
+          }
+        }
+      }
+    }
+
+    stage('Build & Push Docker Image') {
+      agent {
+        kubernetes {
+          label 'kaniko'
+          defaultContainer 'kaniko'
+        }
+      }
+      steps {
+        container('kaniko') {
+          sh """
+            /kaniko/executor \\
+              --context=dir://\${WORKSPACE}/${BUILD_CONTEXT} \\
+              --dockerfile=\${WORKSPACE}/${DOCKERFILE_PATH} \\
+              --destination=\${ECR_REPO}:\${IMAGE_TAG} \\
+              --destination=\${ECR_REPO}:latest \\
+              --cache=true \\
+              --cache-repo=\${ECR_REPO}/cache \\
+              --snapshot-mode=redo \\
+              --log-format=text
+          """
+        }
+      }
+      post {
+        success {
+          echo "Образ запушено: ${env.ECR_REPO}:${env.IMAGE_TAG}"
+        }
+      }
+    }
+
+    stage('Update Helm Chart Image Tag') {
+      agent {
+        kubernetes {
+          label 'kubectl-git'
+          defaultContainer 'git'
+        }
+      }
+      steps {
+        container('git') {
+          withCredentials([
+            usernamePassword(
+              credentialsId: env.GIT_CREDS_ID,
+              usernameVariable: 'GIT_USER',
+              passwordVariable: 'GIT_TOKEN'
+            )
+          ]) {
+            sh """
+              git config --global user.email "jenkins@ci.local"
+              git config --global user.name "Jenkins CI"
+
+              # Клонуємо репозиторій
+              git clone https://\${GIT_USER}:\${GIT_TOKEN}@\$(echo \${GIT_URL} | sed 's|https://||') repo
+              cd repo
+
+              # Оновлюємо тег образу в values.yaml
+              sed -i 's|tag: ".*"|tag: "${IMAGE_TAG}"|' ${HELM_VALUES}
+
+              echo "Оновлено тег в ${HELM_VALUES}:"
+              grep 'tag:' ${HELM_VALUES}
+
+              # Коміт з [skip ci] щоб не тригерити нову збірку
+              git add ${HELM_VALUES}
+              git commit -m "ci: update django-app image to ${IMAGE_TAG} [skip ci]"
+              git push origin ${GIT_BRANCH}
+            """
+          }
+        }
+      }
+      post {
+        success {
+          echo "Helm chart оновлено. Argo CD синхронізує зміни автоматично."
+        }
+      }
+    }
+
+  }
+
+  post {
+    success {
+      echo "Pipeline завершено. Образ: ${env.ECR_REPO}:${env.IMAGE_TAG}"
+    }
+    failure {
+      echo "Pipeline завершився з помилкою. Перевірте логи."
+    }
+  }
+}
